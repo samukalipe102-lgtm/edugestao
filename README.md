@@ -4,20 +4,21 @@ Aplicação web de **gestão escolar e diário de classe**.
 
 **Stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS · Prisma (SQLite em dev, PostgreSQL em produção) · NextAuth (credenciais).
 
-## Como rodar
+> O repositório já vem **pré-configurado para produção (PostgreSQL + Vercel)**. Para desenvolvimento local em SQLite, veja a seção abaixo.
+
+## Como rodar localmente (SQLite)
 
 ```bash
-npm install            # instala dependências e gera o Prisma Client
-npx prisma db push     # cria/atualiza o banco SQLite (prisma/dev.db)
-npm run db:seed        # cria o usuário administrador inicial
-npm run dev            # ambiente de desenvolvimento (http://localhost:3000)
+npm install                 # instala dependências e gera o Prisma Client
+npm run db:use:sqlite       # usa SQLite localmente (o padrão do repo é Postgres)
+# defina DATABASE_URL="file:./dev.db" no seu .env
+npx prisma db push          # cria o banco SQLite (prisma/dev.db)
+npm run db:seed             # cria o usuário administrador inicial
+npm run dev                 # http://localhost:3000
 ```
 
-Build de produção:
-
-```bash
-npm run build && npm run start
-```
+> **Não** faça commit da troca para SQLite — o repositório deve permanecer em PostgreSQL
+> para o deploy na Vercel funcionar. Reverta com `npm run db:use:postgres` antes de commitar.
 
 ## Acesso inicial
 
@@ -74,61 +75,45 @@ npx tsx scripts/test-bloco4.mts   # BNCC/notas/médias
 npx tsx scripts/test-bloco6.mts   # materiais/calendário/cascata
 ```
 
-## Publicação (GitHub + Vercel + Postgres)
+## Publicação na Vercel (automática)
 
-O projeto **já está preparado para deploy**. Nenhuma credencial fica no código — tudo vem de variáveis de ambiente. O `.env` real **não** é versionado (veja `.gitignore`); use `.env.example` como referência.
+O repositório **já está totalmente pré-configurado** para a Vercel com PostgreSQL. As tabelas do banco e o usuário administrador são criados **automaticamente no deploy** — você não precisa rodar nenhum comando de banco manualmente. Nenhuma credencial fica no código; tudo vem de variáveis de ambiente (`.env` não é versionado).
 
-> **Por que trocar o banco?** Em desenvolvimento local o padrão é **SQLite** (arquivo `prisma/dev.db`). Em produção serverless (Vercel) o sistema de arquivos é efêmero, então use um **PostgreSQL gerenciado** (Neon, Supabase, Vercel Postgres, etc.).
+### 1. Crie um banco PostgreSQL gerenciado
 
-### Passo 1 — Enviar o código ao GitHub
+Use um provedor gratuito, por exemplo **Neon** (neon.tech), **Supabase** ou **Vercel Postgres**. Copie a *connection string* (algo como `postgresql://usuario:senha@host/db?sslmode=require`).
 
-Crie um repositório vazio no GitHub e faça o push:
+### 2. Importe o projeto na Vercel
 
-```bash
-git remote add origin https://github.com/SEU-USUARIO/edugestao.git
-git push -u origin main
-```
+Em **vercel.com** → **Add New… → Project** → importe o repositório do GitHub. O framework **Next.js** é detectado automaticamente (build definido em `vercel.json`).
 
-### Passo 2 — Preparar o banco para produção (PostgreSQL)
+### 3. Defina as variáveis de ambiente na Vercel
 
-```bash
-npm run db:use:postgres    # troca o provider do schema para postgresql
-```
+Em **Settings → Environment Variables**, adicione:
 
-Faça commit dessa alteração (o schema passa a ter `provider = "postgresql"`).
-Depois, com a `DATABASE_URL` do seu Postgres definida no ambiente:
+| Variável | Valor | Obrigatória |
+|---|---|:---:|
+| `DATABASE_URL` | connection string do seu Postgres (com `?sslmode=require`) | ✅ |
+| `NEXTAUTH_SECRET` | segredo forte — gere com `openssl rand -base64 32` | ✅ |
+| `NEXTAUTH_URL` | a URL pública do site (ex.: `https://edugestao.vercel.app`) | ✅ |
+| `ADMIN_PASSWORD` | senha do administrador inicial | ✅ |
+| `ADMIN_EMAIL` | e-mail do administrador inicial (padrão: `admin@edugestao.local`) | opcional |
 
-```bash
-npx prisma db push         # cria as tabelas no banco de produção
-```
+### 4. Deploy
 
-> Para voltar ao SQLite local a qualquer momento: `npm run db:use:sqlite`.
+Clique em **Deploy**. Durante o build, o projeto executa automaticamente (via `scripts/build.mjs`):
 
-### Passo 3 — Deploy na Vercel
+1. `prisma generate`
+2. `prisma db push` — cria as tabelas no seu Postgres (se `DATABASE_URL` estiver definida);
+3. seed do administrador — cria o admin com `ADMIN_EMAIL`/`ADMIN_PASSWORD` (idempotente: não recria se já existir);
+4. `next build`.
 
-1. Em **vercel.com**, importe o repositório do GitHub (framework detectado: **Next.js**). O build já está definido em `vercel.json` (`prisma generate && next build`).
-2. Configure as **Environment Variables** no projeto da Vercel:
+Ao terminar, o EduGestão estará acessível pela URL da Vercel. Faça login com o e-mail/senha do admin definidos nas variáveis; todo o resto é cadastrado pelo painel.
 
-   | Variável | Valor |
-   |---|---|
-   | `DATABASE_URL` | connection string do seu Postgres (com `sslmode=require`) |
-   | `NEXTAUTH_SECRET` | segredo forte — gere com `openssl rand -base64 32` |
-   | `NEXTAUTH_URL` | a URL pública do site (ex.: `https://edugestao.vercel.app`) |
-   | `ADMIN_PASSWORD` | senha do admin inicial (**obrigatória** em produção) |
-   | `ADMIN_EMAIL` | (opcional) e-mail do admin inicial |
+> **Nota sobre a `NEXTAUTH_URL`:** no primeiro deploy você ainda não sabe a URL final. Você pode fazer o deploy, copiar a URL gerada pela Vercel, definir `NEXTAUTH_URL` com ela e **redeployar** — ou usar um domínio fixo desde o início.
 
-3. Faça o **Deploy**.
-4. **Uma única vez**, crie as tabelas e o administrador no banco de produção. Rode localmente com a `DATABASE_URL` de produção apontada:
+### Segurança (resumo)
 
-   ```bash
-   npx prisma db push
-   npm run db:seed        # exige ADMIN_PASSWORD em produção
-   ```
-
-Pronto — o EduGestão estará acessível pela URL da Vercel. O primeiro acesso é com o admin criado no seed; todo o resto é cadastrado pelo painel.
-
-### Segurança em produção (resumo)
-
-- `NEXTAUTH_SECRET` **sempre** definido (nunca use o valor de exemplo).
-- `ADMIN_PASSWORD` obrigatório: o seed **aborta** em produção se ele não estiver definido.
 - Nenhum segredo é commitado; `.env` está no `.gitignore`.
+- `NEXTAUTH_SECRET` e `ADMIN_PASSWORD` vêm apenas das variáveis de ambiente.
+- Os passos de banco no build são "best-effort": se o banco estiver indisponível no momento do build, o deploy não trava — a aplicação passa a funcionar assim que o banco estiver acessível (basta um redeploy).
