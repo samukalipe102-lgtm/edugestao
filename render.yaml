@@ -1,17 +1,10 @@
-# Render Blueprint — EduGestão
-# Cria automaticamente: 1 banco PostgreSQL + 1 web service Next.js.
-# O DATABASE_URL é ligado automaticamente ao banco. As tabelas e o admin
-# são criados no build (scripts/build.mjs).
+# Render Blueprint — EduGestão (versão simples com SQLite)
+# Não precisa de banco separado: o banco é um arquivo no disco do serviço.
 #
 # Como usar:
 #   1. Render Dashboard -> New -> Blueprint -> conecte este repositório.
-#   2. Preencha os valores marcados como "sync: false" (senha do admin, etc.).
-#   3. Apply. O Render cria o banco e o site e faz o deploy.
-
-databases:
-  - name: edugestao-db
-    databaseName: edugestao
-    plan: free
+#   2. Preencha apenas ADMIN_PASSWORD (senha do administrador).
+#   3. Apply. Pronto — tabelas e admin são criados automaticamente.
 
 services:
   - type: web
@@ -21,19 +14,18 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm run start
     healthCheckPath: /login
+    # Disco persistente para o arquivo SQLite (sobrevive a reinícios).
+    disk:
+      name: edugestao-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
-      # Conexão com o banco: preenchida automaticamente pelo Render.
+      # Banco SQLite em arquivo, no disco persistente. Sem configuração externa.
       - key: DATABASE_URL
-        fromDatabase:
-          name: edugestao-db
-          property: connectionString
+        value: file:/var/data/edugestao.db
       # Segredo do NextAuth: gerado automaticamente pelo Render.
       - key: NEXTAUTH_SECRET
         generateValue: true
-      # URL pública do site: defina após o primeiro deploy (ex.: https://edugestao.onrender.com)
-      # e faça "Manual Deploy" novamente, ou preencha já se souber o domínio.
-      - key: NEXTAUTH_URL
-        sync: false
       # Administrador inicial (criado no build). Defina uma senha forte.
       - key: ADMIN_EMAIL
         value: admin@edugestao.local
