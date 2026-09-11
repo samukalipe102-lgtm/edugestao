@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build de produção do EduGestão (usado pela Vercel).
+ * Build de produção do EduGestão (usado pela Vercel e pelo Render).
  *
  * Ordem:
  *  1. prisma generate            (sempre)
