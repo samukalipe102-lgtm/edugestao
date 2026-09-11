@@ -25,14 +25,14 @@
     "autoprefixer": "10.4.20",
     "bcryptjs": "2.4.3",
     "clsx": "2.1.1",
-    "next": "14.2.15",
-    "next-auth": "4.24.8",
-    "postcss": "8.4.47",
+    "next": "14.2.35",
+    "next-auth": "4.24.15",
+    "postcss": "^8.5.28",
     "prisma": "5.20.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "tailwindcss": "3.4.12",
-    "tsx": "4.19.1",
+    "tsx": "^4.23.13",
     "typescript": "5.6.2",
     "zod": "3.23.8"
   },
@@ -42,6 +42,6 @@
     "@types/react": "18.3.8",
     "@types/react-dom": "18.3.0",
     "eslint": "8.57.1",
-    "eslint-config-next": "14.2.15"
+    "eslint-config-next": "14.2.35"
   }
 }
