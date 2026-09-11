@@ -5,6 +5,15 @@ const prisma = new PrismaClient();
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL || "admin@edugestao.local";
+
+  // Em produção, exigimos uma senha explícita para não criar um admin com senha
+  // fraca conhecida. Em dev/local, mantemos um padrão para facilitar.
+  if (process.env.NODE_ENV === "production" && !process.env.ADMIN_PASSWORD) {
+    console.error(
+      "ADMIN_PASSWORD é obrigatório em produção. Defina a variável de ambiente antes de rodar o seed."
+    );
+    process.exit(1);
+  }
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
 
   const existing = await prisma.user.findUnique({ where: { email: adminEmail } });

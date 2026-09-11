@@ -2,7 +2,7 @@
 
 Aplicação web de **gestão escolar e diário de classe**.
 
-**Stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS · Prisma + SQLite · NextAuth (credenciais).
+**Stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS · Prisma (SQLite em dev, PostgreSQL em produção) · NextAuth (credenciais).
 
 ## Como rodar
 
@@ -74,10 +74,61 @@ npx tsx scripts/test-bloco4.mts   # BNCC/notas/médias
 npx tsx scripts/test-bloco6.mts   # materiais/calendário/cascata
 ```
 
-## Deploy / produção
+## Publicação (GitHub + Vercel + Postgres)
 
-1. Copie `.env.example` para `.env` e defina um `NEXTAUTH_SECRET` forte (`openssl rand -base64 32`).
-2. `npm install && npx prisma db push && npm run db:seed`
-3. `npm run build && npm run start`
+O projeto **já está preparado para deploy**. Nenhuma credencial fica no código — tudo vem de variáveis de ambiente. O `.env` real **não** é versionado (veja `.gitignore`); use `.env.example` como referência.
 
-Para bancos gerenciados (Postgres/MySQL), altere o `provider`/`DATABASE_URL` em `prisma/schema.prisma` e rode `prisma db push` novamente.
+> **Por que trocar o banco?** Em desenvolvimento local o padrão é **SQLite** (arquivo `prisma/dev.db`). Em produção serverless (Vercel) o sistema de arquivos é efêmero, então use um **PostgreSQL gerenciado** (Neon, Supabase, Vercel Postgres, etc.).
+
+### Passo 1 — Enviar o código ao GitHub
+
+Crie um repositório vazio no GitHub e faça o push:
+
+```bash
+git remote add origin https://github.com/SEU-USUARIO/edugestao.git
+git push -u origin main
+```
+
+### Passo 2 — Preparar o banco para produção (PostgreSQL)
+
+```bash
+npm run db:use:postgres    # troca o provider do schema para postgresql
+```
+
+Faça commit dessa alteração (o schema passa a ter `provider = "postgresql"`).
+Depois, com a `DATABASE_URL` do seu Postgres definida no ambiente:
+
+```bash
+npx prisma db push         # cria as tabelas no banco de produção
+```
+
+> Para voltar ao SQLite local a qualquer momento: `npm run db:use:sqlite`.
+
+### Passo 3 — Deploy na Vercel
+
+1. Em **vercel.com**, importe o repositório do GitHub (framework detectado: **Next.js**). O build já está definido em `vercel.json` (`prisma generate && next build`).
+2. Configure as **Environment Variables** no projeto da Vercel:
+
+   | Variável | Valor |
+   |---|---|
+   | `DATABASE_URL` | connection string do seu Postgres (com `sslmode=require`) |
+   | `NEXTAUTH_SECRET` | segredo forte — gere com `openssl rand -base64 32` |
+   | `NEXTAUTH_URL` | a URL pública do site (ex.: `https://edugestao.vercel.app`) |
+   | `ADMIN_PASSWORD` | senha do admin inicial (**obrigatória** em produção) |
+   | `ADMIN_EMAIL` | (opcional) e-mail do admin inicial |
+
+3. Faça o **Deploy**.
+4. **Uma única vez**, crie as tabelas e o administrador no banco de produção. Rode localmente com a `DATABASE_URL` de produção apontada:
+
+   ```bash
+   npx prisma db push
+   npm run db:seed        # exige ADMIN_PASSWORD em produção
+   ```
+
+Pronto — o EduGestão estará acessível pela URL da Vercel. O primeiro acesso é com o admin criado no seed; todo o resto é cadastrado pelo painel.
+
+### Segurança em produção (resumo)
+
+- `NEXTAUTH_SECRET` **sempre** definido (nunca use o valor de exemplo).
+- `ADMIN_PASSWORD` obrigatório: o seed **aborta** em produção se ele não estiver definido.
+- Nenhum segredo é commitado; `.env` está no `.gitignore`.
