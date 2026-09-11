@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f5f7fb;
+}
+
+body {
+  background: var(--background);
+  color: #1e293b;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
+  }
+  .label {
+    @apply block text-sm font-medium text-slate-700 mb-1;
+  }
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .table-base {
+    @apply w-full text-left text-sm;
+  }
+  .table-base th {
+    @apply px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-200;
+  }
+  .table-base td {
+    @apply px-4 py-3 border-b border-slate-100;
+  }
+}
+
+
+/* ---------- Documentos imprimíveis ---------- */
+.doc-sheet {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+}
+
+@media screen {
+  .doc-page {
+    background: #e2e8f0;
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+  .doc-sheet {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    padding: 2.5rem 3rem;
+    border-radius: 8px;
+  }
+}
+
+.no-print {
+  /* visível na tela, oculto na impressão */
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .doc-page {
+    background: white;
+    padding: 0;
+  }
+  .doc-sheet {
+    box-shadow: none;
+    max-width: 100%;
+    padding: 0;
+  }
+  body {
+    background: white;
+  }
+  @page {
+    margin: 1.5cm;
+  }
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.doc-table th,
+.doc-table td {
+  border: 1px solid #cbd5e1;
+  padding: 6px 10px;
+  text-align: left;
+}
+.doc-table th {
+  background: #f1f5f9;
+}

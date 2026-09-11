@@ -1,0 +1,308 @@
+// EduGestão — schema Prisma (SQLite)
+// Estrutura completa e escalável. Nenhum dado fictício é criado automaticamente.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------
+// PERFIS E USUÁRIOS
+// ------------------------------------------------------------------
+
+// Role: ADMIN | TEACHER | STUDENT | GUARDIAN (validado na aplicação)
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?
+  role         String   @default("STUDENT")
+  active       Boolean  @default(true)
+  // Convite de professor: token e status
+  inviteToken  String?  @unique
+  invitedAt    DateTime?
+  acceptedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  teacher  Teacher?
+  student  Student?
+  guardian Guardian?
+}
+
+// ------------------------------------------------------------------
+// ESCOLA (Configurações usadas nos documentos)
+// ------------------------------------------------------------------
+
+model School {
+  id                 String   @id @default(cuid())
+  name               String
+  code               String?
+  state              String?
+  educationSecretary String?
+  municipality       String?
+  address            String?
+  contact            String?
+  logoUrl            String?
+  schoolYear         String?
+  directorName       String?
+  secretaryName      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+// ------------------------------------------------------------------
+// PESSOAS
+// ------------------------------------------------------------------
+
+model Teacher {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String?
+  createdAt DateTime @default(now())
+
+  assignments Assignment[]
+  lessons     Lesson[]
+  plans       Plan[]
+}
+
+model Guardian {
+  id        String   @id @default(cuid())
+  userId    String?  @unique
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+
+  students Student[]
+}
+
+// StudentStatus: ACTIVE | TRANSFERRED | INACTIVE (validado na aplicação)
+
+model Student {
+  id           String        @id @default(cuid())
+  userId       String?       @unique
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name         String
+  registration String        @unique
+  email        String?
+  phone        String?
+  status       String        @default("ACTIVE")
+  guardianId   String?
+  guardian     Guardian?     @relation(fields: [guardianId], references: [id], onDelete: SetNull)
+  classGroupId String?
+  classGroup   ClassGroup?   @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  attendances Attendance[]
+  grades      Grade[]
+}
+
+// ------------------------------------------------------------------
+// ACADÊMICO — DISCIPLINAS, TURMAS, ATRIBUIÇÕES
+// ------------------------------------------------------------------
+
+model Subject {
+  id        String   @id @default(cuid())
+  name      String
+  code      String?
+  area      String?
+  createdAt DateTime @default(now())
+
+  assignments Assignment[]
+  bnccSkills  BnccSkill[]
+}
+
+model ClassGroup {
+  id         String   @id @default(cuid())
+  name       String
+  stage      String?  // série/etapa
+  schoolYear String
+  shift      String?  // turno
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  students    Student[]
+  assignments Assignment[]
+}
+
+// Relação principal: Turma + Disciplina + Professor
+model Assignment {
+  id           String     @id @default(cuid())
+  classGroupId String
+  classGroup   ClassGroup @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  subjectId    String
+  subject      Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherId    String
+  teacher      Teacher    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  schedules   Schedule[]
+  lessons     Lesson[]
+  assessments Assessment[]
+  attendances Attendance[]
+  grades      Grade[]
+  plans       Plan[]
+  materials   Material[]
+
+  @@unique([classGroupId, subjectId, teacherId])
+}
+
+// ------------------------------------------------------------------
+// HORÁRIOS
+// ------------------------------------------------------------------
+
+model Schedule {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  weekday      Int        // 1=segunda ... 7=domingo
+  startTime    String     // "07:30"
+  endTime      String     // "08:20"
+  lessonNumber Int        // número da aula no dia
+  createdAt    DateTime   @default(now())
+}
+
+// ------------------------------------------------------------------
+// AULAS E REGISTROS
+// ------------------------------------------------------------------
+
+model Lesson {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  teacherId    String?
+  teacher      Teacher?   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  number       Int?       // número da aula
+  date         DateTime?
+  topic        String
+  content      String?
+  objective    String?
+  methodology  String?
+  activity     String?
+  bnccCodes    String?    // códigos BNCC separados por vírgula
+  planned      Boolean    @default(false) // aula planejada (banco), ainda não ministrada
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  attendances Attendance[]
+}
+
+// ------------------------------------------------------------------
+// FREQUÊNCIA
+// ------------------------------------------------------------------
+
+model Attendance {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  lessonId     String?
+  lesson       Lesson?    @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date         DateTime
+  present      Boolean    @default(true)
+  // até 2 aulas de frequência por registro
+  slot         Int        @default(1) // 1 ou 2
+  createdAt    DateTime   @default(now())
+
+  @@unique([assignmentId, studentId, date, slot])
+}
+
+// ------------------------------------------------------------------
+// AVALIAÇÕES E NOTAS
+// ------------------------------------------------------------------
+
+model Assessment {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  name         String
+  date         DateTime?
+  maxValue     Float      @default(10)
+  createdAt    DateTime   @default(now())
+
+  grades Grade[]
+}
+
+model Grade {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  value        Float
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([assessmentId, studentId])
+}
+
+// ------------------------------------------------------------------
+// PLANEJAMENTO E BNCC
+// ------------------------------------------------------------------
+
+model BnccSkill {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  stage     String?  // etapa
+  grade     String?  // série
+  area      String?  // área
+  component String?  // componente curricular
+  description String
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+model Plan {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  teacherId    String?
+  teacher      Teacher?   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  title        String
+  description  String?
+  period       String?
+  bnccCodes    String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+// ------------------------------------------------------------------
+// DOCUMENTOS (registro de emissão)
+// ------------------------------------------------------------------
+
+model Document {
+  id        String   @id @default(cuid())
+  type      String   // BOLETIM, HISTORICO, DECLARACAO, FICHA, etc.
+  studentId String?
+  classId   String?
+  payload   String?  // JSON com dados congelados no momento da emissão
+  createdAt DateTime @default(now())
+}
+
+
+// ------------------------------------------------------------------
+// MATERIAIS (arquivos/links de apoio por atribuição)
+// ------------------------------------------------------------------
+
+model Material {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  title        String
+  url          String?
+  description  String?
+  createdAt    DateTime   @default(now())
+}
