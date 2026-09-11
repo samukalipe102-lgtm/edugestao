@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Start de produção do EduGestão (Render).
+ * Start de produção do EduGestão (Railway/Render).
  *
- * Roda em runtime, quando o disco persistente já está montado:
+ * Roda em runtime, com o DATABASE_URL já disponível:
  *  1. prisma db push   — cria/atualiza as tabelas no banco (idempotente)
  *  2. seed do admin    — cria o administrador (se ADMIN_PASSWORD existir; idempotente)
- *  3. next start        — sobe o servidor
+ *  3. next start        — sobe o servidor na porta definida por $PORT
  *
  * Os passos 1-2 são "best-effort": se falharem, o servidor ainda sobe.
  */
@@ -35,4 +35,5 @@ if (process.env.DATABASE_URL) {
   console.warn("[start] DATABASE_URL ausente — passos de banco ignorados.");
 }
 
-run("npx next start");
+const port = process.env.PORT || "3000";
+run(`npx next start -p ${port}`);

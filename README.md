@@ -4,7 +4,7 @@ Aplicação web de **gestão escolar e diário de classe**.
 
 **Stack:** Next.js 14 (App Router) · TypeScript · Tailwind CSS · Prisma (SQLite em dev, PostgreSQL em produção) · NextAuth (credenciais).
 
-> O repositório já vem **pré-configurado para deploy** (PostgreSQL). O jeito mais fácil de publicar é pelo **Render** (1 clique, cria banco + site juntos) — veja [Publicação no Render](#publicação-no-render-recomendado--1-clique). Também há instruções para a Vercel. Para desenvolvimento local em SQLite, veja a seção abaixo.
+> O repositório já vem **pré-configurado para deploy** (PostgreSQL). O jeito mais fácil de publicar é pelo **Railway** — veja [Publicação no Railway](#publicação-no-railway-recomendado--só-cliques). Também há instruções para Render e Vercel. Para desenvolvimento local em SQLite, veja a seção abaixo.
 
 ## Como rodar localmente (SQLite)
 
@@ -75,23 +75,32 @@ npx tsx scripts/test-bloco4.mts   # BNCC/notas/médias
 npx tsx scripts/test-bloco6.mts   # materiais/calendário/cascata
 ```
 
-## Publicação no Render (recomendado — 1 clique)
+## Publicação no Railway (recomendado — só cliques)
 
-O jeito mais simples: o Render cria **o banco PostgreSQL e o site juntos**, automaticamente, a partir do arquivo `render.yaml` já incluído no repositório. Você não precisa criar banco à parte nem copiar connection string.
+O Railway cria o banco PostgreSQL sozinho e liga tudo automaticamente. Você só precisa clicar e digitar uma senha.
 
-### Passos
+### Passos (só cliques)
 
-1. Acesse **[dashboard.render.com](https://dashboard.render.com)** e crie uma conta (pode usar o GitHub).
-2. Clique em **New → Blueprint** e selecione o repositório **`edugestao`**.
-3. O Render lê o `render.yaml` e mostra o que será criado: **1 banco PostgreSQL** + **1 web service**. Ele vai pedir para você preencher duas variáveis:
-   - **`ADMIN_PASSWORD`** — a senha do administrador inicial (escolha uma forte).
-   - **`NEXTAUTH_URL`** — deixe em branco por enquanto (ou coloque `http://localhost` provisoriamente).
-4. Clique em **Apply**. O Render cria o banco, conecta o `DATABASE_URL` automaticamente, gera o `NEXTAUTH_SECRET` sozinho, e durante o build cria as **tabelas** e o **administrador**.
-5. Quando o deploy terminar, copie a URL pública gerada (ex.: `https://edugestao.onrender.com`), cole em **`NEXTAUTH_URL`** nas variáveis do serviço e clique em **Manual Deploy → Deploy latest commit**. (Esse segundo deploy é rápido.)
+1. Acesse **[railway.app](https://railway.app)** e entre com sua conta do **GitHub**.
+2. **New Project → Deploy from GitHub repo → `edugestao`**.
+3. Ainda no projeto, clique em **New → Database → Add PostgreSQL**. O Railway cria o banco e disponibiliza o `DATABASE_URL` automaticamente.
+4. Abra o serviço do app → aba **Variables** → adicione (com **New Variable**):
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (o Railway sugere a referência ao banco; basta selecionar)
+   - `NEXTAUTH_SECRET` = qualquer texto longo aleatório (ex.: `edugestao-prod-8f3k2n9x7q1w5e4r6t8y0u2i3o5p`)
+   - `ADMIN_PASSWORD` = a senha que você quer para o administrador
+5. Em **Settings → Networking → Generate Domain**, gere a URL pública. Copie-a e crie a variável:
+   - `NEXTAUTH_URL` = a URL gerada (ex.: `https://edugestao-production.up.railway.app`)
+6. O Railway redeploya sozinho. Ao terminar, acesse a URL e faça login:
+   - **E-mail:** `admin@edugestao.local`
+   - **Senha:** a que você definiu em `ADMIN_PASSWORD`
 
-Pronto! Acesse a URL e faça login com `ADMIN_EMAIL` (padrão `admin@edugestao.local`) e a `ADMIN_PASSWORD` que você definiu. Todo o resto é cadastrado pelo painel.
+As tabelas e o administrador são criados automaticamente no start (`scripts/start.mjs`).
 
-> **Plano gratuito do Render:** o site "hiberna" após um tempo sem uso e demora alguns segundos para acordar no primeiro acesso — normal no tier free.
+---
+
+## Publicação no Render (alternativa)
+
+O Render também funciona. Crie um **PostgreSQL** e um **Web Service** a partir deste repositório, e defina as variáveis `DATABASE_URL` (ligada ao banco), `NEXTAUTH_SECRET`, `NEXTAUTH_URL` e `ADMIN_PASSWORD`. As tabelas e o admin são criados no start.
 
 ---
 
